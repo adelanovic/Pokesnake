@@ -32,7 +32,7 @@ jobs:
       - name: Build web version
         run: |
           pip install pygbag==0.9.3
-          python -m pygbag --build --title Pokesnake .
+          python -m pygbag --build --no_opt --title Pokesnake .
 
       - uses: actions/upload-pages-artifact@v3
         with:
