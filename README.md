@@ -12,7 +12,25 @@ Requires Python 3.8+.
 
 ```sh
 pip install -r requirements.txt
-python snake_game.py
+python snake_game.py        # or: python -m pokesnake
+```
+
+## Project layout
+
+| File                     | What it does                                                    |
+|--------------------------|-----------------------------------------------------------------|
+| `snake_game.py`          | Launcher                                                        |
+| `pokesnake/game.py`      | `Game`: the window and the start / play / game over flow        |
+| `pokesnake/world.py`     | `World`: one round's rules - moving, catching, winning, losing  |
+| `pokesnake/snake.py`     | `Snake`: the snake's body and turning                           |
+| `pokesnake/renderer.py`  | `Renderer`: all drawing                                         |
+| `pokesnake/assets.py`    | `Assets`: loads and caches images, fonts and music              |
+| `pokesnake/settings.py`  | Colors, board size, speeds and key bindings                     |
+
+`world.py` and `snake.py` don't use pygame, so the game rules can be tested on their own:
+
+```sh
+python -m unittest
 ```
 
 ## Controls
