@@ -1,5 +1,10 @@
-"""The window and the flow between the start screen, playing and the game over screen."""
+"""The window and the flow between the start screen, playing and the game over screen.
 
+The loops are async so the same code runs on the desktop and in the browser (via pygbag), where
+every frame must `await asyncio.sleep(0)` to hand control back to the page.
+"""
+
+import asyncio
 import os
 import sys
 
@@ -11,9 +16,14 @@ from pokesnake.settings import (BLUE, GRID_COLUMNS, GRID_ROWS, IMAGE_DIR, KEY_DI
                                 MIN_CELL_SIZE, QUIT_KEYS, REPLAY_KEY, SPEED_KEYS, SPEED_MENU, SPEEDS)
 from pokesnake.world import Status, World
 
+IS_WEB = sys.platform == 'emscripten'
+MENU_FPS = 30
+
 
 def fit_cell_size():
     """Shrink the grid cells on small monitors so the whole board stays visible."""
+    if IS_WEB:
+        return MAX_CELL_SIZE  # The browser scales the canvas to fit the page
     info = pygame.display.Info()
     return max(MIN_CELL_SIZE, min(MAX_CELL_SIZE,
                                   (info.current_w - 40) // GRID_COLUMNS,
@@ -31,17 +41,17 @@ class Game:
         self.assets = Assets(cell_size)
         self.renderer = Renderer(self.screen, self.assets, cell_size)
 
-    def run(self):
+    async def run(self):
         self.assets.play_music()
-        speed = self.start_screen()
+        speed = await self.start_screen()
         while speed:
-            world = self.play(speed)
+            world = await self.play(speed)
             if world is None:
                 break
-            speed = self.game_over_screen(world, speed)
+            speed = await self.game_over_screen(world, speed)
         pygame.quit()
 
-    def play(self, speed):
+    async def play(self, speed):
         """Play one round. Returns the finished World, or None if the window was closed."""
         world = World(GRID_COLUMNS, GRID_ROWS, self.assets.sprite_names)
         while True:
@@ -57,8 +67,9 @@ class Game:
             self.renderer.draw_world(world, speed)
             pygame.display.update()
             self.clock.tick(speed.moves_per_second)
+            await asyncio.sleep(0)
 
-    def start_screen(self):
+    async def start_screen(self):
         self.renderer.draw_gallery(self.assets.sprite_names[:24], BLUE)
         self.renderer.draw_message([
             'Pokesnake!',
@@ -66,9 +77,9 @@ class Game:
             'Use the arrow keys to catch Pokemon.',
         ])
         pygame.display.update()
-        return self._wait_for_speed()
+        return await self._wait_for_speed()
 
-    def game_over_screen(self, world, speed):
+    async def game_over_screen(self, world, speed):
         """Show the captured Pokemon. Returns the speed for the next game, or None to quit."""
         self.renderer.draw_gallery(world.captured, BLUE)
         self.renderer.draw_message([
@@ -78,25 +89,26 @@ class Game:
             'You can do it! I love you!',
         ])
         pygame.display.update()
-        return self._wait_for_speed(speed)
+        return await self._wait_for_speed(speed)
 
-    @staticmethod
-    def _wait_for_speed(current_speed=None):
-        """Sleep until a speed key (or C to replay at `current_speed`). Returns the speed, or None to quit."""
+    async def _wait_for_speed(self, current_speed=None):
+        """Wait for a speed key (or C to replay at `current_speed`). Returns the speed, or None to quit."""
         while True:
-            event = pygame.event.wait()
-            if event.type == pygame.QUIT:
-                return None
-            if event.type == pygame.KEYDOWN:
-                key = SPEED_KEYS.get(event.key, event.key)
-                if key in QUIT_KEYS:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
                     return None
-                if key in SPEEDS:
-                    return SPEEDS[key]
-                if key == REPLAY_KEY and current_speed:
-                    return current_speed
+                if event.type == pygame.KEYDOWN:
+                    key = SPEED_KEYS.get(event.key, event.key)
+                    if key in QUIT_KEYS:
+                        return None
+                    if key in SPEEDS:
+                        return SPEEDS[key]
+                    if key == REPLAY_KEY and current_speed:
+                        return current_speed
+            self.clock.tick(MENU_FPS)
+            await asyncio.sleep(0)
 
 
 def main():
-    Game().run()
+    asyncio.run(Game().run())
     sys.exit()

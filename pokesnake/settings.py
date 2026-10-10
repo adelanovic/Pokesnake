@@ -10,7 +10,9 @@ from pokesnake.snake import DOWN, LEFT, RIGHT, UP
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE_DIR = os.path.join(BASE_DIR, 'images')
 SPRITE_DIR = os.path.join(BASE_DIR, 'pokemon')
-MUSIC_FILES = [os.path.join(BASE_DIR, 'music', name) for name in ('freesound_trance.mp3', 'loop.wav')]
+# The first file that loads is played. Browsers only get the .ogg (see pygbag.ini)
+MUSIC_FILES = [os.path.join(BASE_DIR, 'music', name)
+               for name in ('freesound_trance.ogg', 'freesound_trance.mp3', 'loop.wav')]
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
