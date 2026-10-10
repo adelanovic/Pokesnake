@@ -17,7 +17,10 @@ from pokesnake.settings import (BLUE, GRID_COLUMNS, GRID_ROWS, IMAGE_DIR, KEY_DI
 from pokesnake.world import Status, World
 
 IS_WEB = sys.platform == 'emscripten'
-MENU_FPS = 30
+# The loop always runs this fast, even when the snake moves only a few times a second. In the browser the
+# music is fed between frames, so a slow loop starves the audio and it crackles.
+FPS = 60
+AUDIO_BUFFER_SIZE = 2048
 
 
 def fit_cell_size():
@@ -32,6 +35,8 @@ def fit_cell_size():
 
 class Game:
     def __init__(self):
+        # A bigger buffer than pygame's default avoids crackling when the computer is busy
+        pygame.mixer.pre_init(44100, -16, 2, AUDIO_BUFFER_SIZE)
         pygame.init()
         cell_size = fit_cell_size()
         pygame.display.set_caption('Pokesnake')
@@ -54,6 +59,11 @@ class Game:
     async def play(self, speed):
         """Play one round. Returns the finished World, or None if the window was closed."""
         world = World(GRID_COLUMNS, GRID_ROWS, self.assets.sprite_names)
+        step_ms = 1000 / speed.moves_per_second
+        elapsed_ms = 0
+        self.renderer.draw_world(world, speed)
+        pygame.display.update()
+        self.clock.tick()  # Don't count time spent on the menu
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -61,12 +71,15 @@ class Game:
                 if event.type == pygame.KEYDOWN and event.key in KEY_DIRECTIONS:
                     world.snake.queue_turn(KEY_DIRECTIONS[event.key])
 
-            if world.step() is not Status.PLAYING:
-                return world
+            # Move the snake only when its next step is due; cap the backlog so a hiccup can't skip moves
+            elapsed_ms += self.clock.tick(FPS)
+            if elapsed_ms >= step_ms:
+                elapsed_ms = min(elapsed_ms - step_ms, step_ms)
+                if world.step() is not Status.PLAYING:
+                    return world
+                self.renderer.draw_world(world, speed)
+                pygame.display.update()
 
-            self.renderer.draw_world(world, speed)
-            pygame.display.update()
-            self.clock.tick(speed.moves_per_second)
             await asyncio.sleep(0)
 
     async def start_screen(self):
@@ -105,7 +118,7 @@ class Game:
                         return SPEEDS[key]
                     if key == REPLAY_KEY and current_speed:
                         return current_speed
-            self.clock.tick(MENU_FPS)
+            self.clock.tick(FPS)
             await asyncio.sleep(0)
 
 
