@@ -15,6 +15,25 @@ pip install -r requirements.txt
 python snake_game.py        # or: python -m pokesnake
 ```
 
+## Playing in the browser
+
+The game also runs in the browser using [pygbag](https://pygame-web.github.io/), which compiles Python and
+pygame to WebAssembly. `main.py` is the browser entry point and `pygbag.ini` lists the files left out of
+the web build.
+
+To try the browser version locally:
+
+```sh
+pip install pygbag
+pygbag .                    # then open http://localhost:8000
+```
+
+### Deploying to GitHub Pages
+
+`.github/workflows/pages.yml` runs the tests, builds the web version and publishes it on every push to
+`main`. One-time setup: on GitHub go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+The game is then live at `https://<your-username>.github.io/<repo-name>/`.
+
 ## Project layout
 
 | File                     | What it does                                                    |
